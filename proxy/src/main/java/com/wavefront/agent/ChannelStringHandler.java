@@ -10,6 +10,7 @@ import com.wavefront.ingester.Decoder;
 
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 
@@ -47,10 +48,11 @@ public class ChannelStringHandler extends SimpleChannelInboundHandler<String> {
                               final PostPushDataTimedTask[] postPushDataTimedTasks,
                               @Nullable final Function<String, String> transformer,
                               @Nullable final String pointLineWhiteListRegex,
-                              @Nullable final String pointLineBlackListRegex) {
+                              @Nullable final String pointLineBlackListRegex,
+                              @Nullable Map<String,String> internalPointTags) {
     this.decoder = decoder;
     this.pointHandler = new PointHandlerImpl(port, validationLevel, blockedPointsPerBatch, prefix,
-        postPushDataTimedTasks);
+        postPushDataTimedTasks, internalPointTags);
     this.transformer = transformer;
     this.linePredicate = new MetricWhiteBlackList(pointLineWhiteListRegex,
         pointLineBlackListRegex,

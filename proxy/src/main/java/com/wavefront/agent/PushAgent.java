@@ -146,7 +146,7 @@ public class PushAgent extends AbstractAgent {
         final ChannelHandler handler = new OpenTSDBPortUnificationHandler(
             new OpenTSDBDecoder("unknown", customSourceTags),
             port, prefix, pushValidationLevel, pushBlockedSamples, flushTasks, opentsdbWhitelistRegex,
-            opentsdbBlacklistRegex);
+            opentsdbBlacklistRegex, internalPointTags);
         ChannelPipeline pipeline = ch.pipeline();
         pipeline.addLast(new PlainTextOrHttpFrameDecoder(handler));
       }
@@ -161,7 +161,7 @@ public class PushAgent extends AbstractAgent {
     ChannelHandler handler = new ChannelByteArrayHandler(
         new PickleProtocolDecoder("unknown", customSourceTags, formatter.getMetricMangler(), port),
         port, prefix, pushValidationLevel, pushBlockedSamples,
-        getFlushTasks(port), whitelistRegex, blacklistRegex);
+        getFlushTasks(port), whitelistRegex, blacklistRegex, this.internalPointTags);
 
     // create a class to use for StreamIngester to get a new FrameDecoder
     // for each request (not shareable since it's storing how many bytes
@@ -207,7 +207,7 @@ public class PushAgent extends AbstractAgent {
     // Set up a custom graphite handler, with no formatter
     ChannelHandler graphiteHandler = new ChannelStringHandler(new GraphiteDecoder("unknown", customSourceTags),
         port, prefix, pushValidationLevel, pushBlockedSamples, getFlushTasks(port), formatter, whitelistRegex,
-        blacklistRegex);
+        blacklistRegex, this.internalPointTags);
 
     if (formatter == null) {
       List<Function<Channel, ChannelHandler>> handler = Lists.newArrayList(1);

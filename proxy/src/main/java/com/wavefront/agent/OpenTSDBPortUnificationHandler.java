@@ -71,10 +71,11 @@ class OpenTSDBPortUnificationHandler extends SimpleChannelInboundHandler<Object>
                                  final int blockedPointsPerBatch,
                                  final PostPushDataTimedTask[] postPushDataTimedTasks,
                                  @Nullable final String pointLineWhiteListRegex,
-                                 @Nullable final String pointLineBlackListRegex) {
+                                 @Nullable final String pointLineBlackListRegex,
+                                 @Nullable Map<String,String> internalPointTags) {
     this.decoder = decoder;
     this.pointHandler = new PointHandlerImpl(
-        port, validationLevel, blockedPointsPerBatch, prefix, postPushDataTimedTasks);
+        port, validationLevel, blockedPointsPerBatch, prefix, postPushDataTimedTasks, internalPointTags);
     this.whiteBlackList = new MetricWhiteBlackList(
         pointLineWhiteListRegex, pointLineBlackListRegex, String.valueOf(port));
   }

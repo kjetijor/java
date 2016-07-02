@@ -8,6 +8,7 @@ import com.wavefront.common.MetricWhiteBlackList;
 import com.wavefront.ingester.Decoder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,10 +44,11 @@ class ChannelByteArrayHandler extends SimpleChannelInboundHandler<byte[]> {
                                  final int blockedPointsPerBatch,
                                  final PostPushDataTimedTask[] postPushDataTimedTasks,
                                  @Nullable final String pointLineWhiteListRegex,
-                                 @Nullable final String pointLineBlackListRegex) {
+                                 @Nullable final String pointLineBlackListRegex,
+                                 @Nullable Map<String,String> internalPointTags) {
     this.decoder = decoder;
     this.pointHandler = new PointHandlerImpl(port, validationLevel, blockedPointsPerBatch, prefix,
-        postPushDataTimedTasks);
+        postPushDataTimedTasks, internalPointTags);
     this.metricPredicate = new MetricWhiteBlackList(
       pointLineWhiteListRegex, pointLineBlackListRegex, String.valueOf(port));
   }

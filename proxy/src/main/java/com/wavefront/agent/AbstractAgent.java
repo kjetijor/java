@@ -38,7 +38,9 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.UUID;
@@ -190,6 +192,9 @@ public abstract class AbstractAgent {
   @Parameter(names = {"--ephemeral"}, description = "If true, this agent is removed from Wavefront after 24 hours of inactivity.")
   protected boolean ephemeral = false;
 
+  @Parameter(names = {"--agentInternalPointTags"}, description = "Path to property file with point tags to apply to internal send/receive metrics.")
+  protected String agentInternalPointTagsFile = null;
+
   @Parameter(description = "Unparsed parameters")
   protected List<String> unparsed_params;
 
@@ -197,6 +202,7 @@ public abstract class AbstractAgent {
   protected ResourceBundle props;
   protected final AtomicLong bufferSpaceLeft = new AtomicLong();
   protected List<String> customSourceTags = new ArrayList<String>();
+  protected Map<String,String> internalPointTags = new HashMap<>();
 
   protected final boolean localAgent;
   protected final boolean pushAgent;
@@ -284,11 +290,36 @@ public abstract class AbstractAgent {
         retryBackoffBaseSeconds = Double.parseDouble(prop.getProperty("retryBackoffBaseSeconds",
             String.valueOf(retryBackoffBaseSeconds)));
         customSourceTagsProperty = prop.getProperty("customSourceTags", customSourceTagsProperty);
+        agentInternalPointTagsFile = prop.getProperty("agentInternalPointTagsFile", agentInternalPointTagsFile);
         ephemeral = Boolean.parseBoolean(prop.getProperty("ephemeral", String.valueOf(ephemeral)));
         picklePorts = prop.getProperty("picklePorts", picklePorts);
         logger.warning("Loaded configuration file " + pushConfigFile);
       } catch (Throwable exception) {
         logger.severe("Could not load configuration file " + pushConfigFile);
+        throw exception;
+      }
+
+      try {
+        if (agentInternalPointTagsFile != null) {
+
+          Properties props = new Properties();
+          props.load(new FileInputStream(agentInternalPointTagsFile));
+          for (Map.Entry<Object, Object> e : props.entrySet()) {
+            String key = (String)e.getKey();
+            String value = (String)e.getValue();
+            if ( key.length() == 0 || value.length() == 0 ) {
+              logger.warning("Could not use agentInternalPointTagsFile entry: " + key + "=" + value);
+              continue;
+            }
+            this.internalPointTags.put(key, value);
+          }
+          logger.info("Loaded agentInternalPointTagsFile (" + agentInternalPointTagsFile + ")" + this.internalPointTags.toString());
+          for ( String s : this.internalPointTags.keySet() ) {
+            logger.info(" " + s + "=" + this.internalPointTags.get(s));
+          }
+        }
+      } catch (Throwable exception) {
+        logger.severe("Could not load agentInternalPointTagsFile file " + agentInternalPointTagsFile);
         throw exception;
       }
 
@@ -552,7 +583,7 @@ public abstract class AbstractAgent {
     ScheduledExecutorService es = Executors.newScheduledThreadPool(flushThreads);
     for (int i = 0; i < flushThreads; i++) {
       final PostPushDataTimedTask postPushDataTimedTask =
-          new PostPushDataTimedTask(agentAPI, pushLogLevel, agentId, port);
+          new PostPushDataTimedTask(agentAPI, pushLogLevel, agentId, port, this.internalPointTags);
       es.scheduleWithFixedDelay(postPushDataTimedTask, pushFlushInterval, pushFlushInterval,
           TimeUnit.MILLISECONDS);
       toReturn[i] = postPushDataTimedTask;

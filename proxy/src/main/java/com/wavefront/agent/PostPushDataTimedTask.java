@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.RateLimiter;
 
 import com.wavefront.agent.api.ForceQueueEnabledAgentAPI;
 import com.wavefront.api.agent.Constants;
+import com.wavefront.common.TaggedMetricName;
 import com.wavefront.ingester.StringLineIngester;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Counter;
@@ -12,12 +13,16 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 
 /**
@@ -53,6 +58,7 @@ public class PostPushDataTimedTask implements Runnable {
 
   private UUID daemonId;
   private int port;
+  private final Map<String,String> tags;
   private static int pointsPerBatch = MAX_SPLIT_BATCH_SIZE;
   private String logLevel;
 
@@ -111,18 +117,23 @@ public class PostPushDataTimedTask implements Runnable {
     return daemonId;
   }
 
-  public PostPushDataTimedTask(ForceQueueEnabledAgentAPI agentAPI, String logLevel, UUID daemonId, int port) {
+  public PostPushDataTimedTask(ForceQueueEnabledAgentAPI agentAPI,
+                               String logLevel,
+                               UUID daemonId,
+                               int port,
+                               @Nullable Map<String,String> tags) {
     this.logLevel = logLevel;
     this.daemonId = daemonId;
     this.port = port;
+    this.tags = Collections.unmodifiableMap(tags == null ? new HashMap<String,String>() : tags);
 
     this.agentAPI = agentAPI;
 
-    this.pointsAttempted = Metrics.newCounter(new MetricName("points." + String.valueOf(port), "", "sent"));
-    this.pointsQueued = Metrics.newCounter(new MetricName("points." + String.valueOf(port), "", "queued"));
-    this.pointsBlocked = Metrics.newCounter(new MetricName("points." + String.valueOf(port), "", "blocked"));
-    this.pointsReceived = Metrics.newCounter(new MetricName("points." + String.valueOf(port), "", "received"));
-    this.batchSendTime = Metrics.newTimer(new MetricName("push." + String.valueOf(port), "", "duration"),
+    this.pointsAttempted = Metrics.newCounter(new TaggedMetricName("points." + String.valueOf(port), "sent", this.tags));
+    this.pointsQueued = Metrics.newCounter(new TaggedMetricName("points." + String.valueOf(port), "queued", this.tags));
+    this.pointsBlocked = Metrics.newCounter(new TaggedMetricName("points." + String.valueOf(port), "blocked", this.tags));
+    this.pointsReceived = Metrics.newCounter(new TaggedMetricName("points." + String.valueOf(port), "received", this.tags));
+    this.batchSendTime = Metrics.newTimer(new TaggedMetricName("push." + String.valueOf(port), "duration", this.tags),
         TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
   }
 

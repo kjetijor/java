@@ -2,13 +2,15 @@ package com.wavefront.agent;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import com.wavefront.common.TaggedMetricName;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Counter;
-import com.yammer.metrics.core.MetricName;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateUtils;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -40,6 +42,8 @@ public class PointHandlerImpl implements PointHandler {
   @Nullable
   private final String prefix;
 
+  private final Map<String, String> internalTags;
+
   protected final int blockedPointsPerBatch;
   protected final PostPushDataTimedTask[] sendDataTasks;
 
@@ -47,21 +51,23 @@ public class PointHandlerImpl implements PointHandler {
                           final String validationLevel,
                           final int blockedPointsPerBatch,
                           final PostPushDataTimedTask[] sendDataTasks) {
-    this(port, validationLevel, blockedPointsPerBatch, null, sendDataTasks);
+    this(port, validationLevel, blockedPointsPerBatch, null, sendDataTasks, null);
   }
 
   public PointHandlerImpl(final int port,
                           final String validationLevel,
                           final int blockedPointsPerBatch,
                           @Nullable final String prefix,
-                          final PostPushDataTimedTask[] sendDataTasks) {
+                          final PostPushDataTimedTask[] sendDataTasks,
+                          @Nullable final Map<String,String> internalTags) {
     this.validationLevel = validationLevel;
     this.port = port;
     this.blockedPointsPerBatch = blockedPointsPerBatch;
     this.prefix = prefix;
+    this.internalTags = internalTags == null ? new HashMap<String,String>() : Collections.unmodifiableMap(internalTags);
 
-    this.outOfRangePointTimes = Metrics.newCounter(new MetricName("point", "", "badtime"));
-    this.illegalCharacterPoints = Metrics.newCounter(new MetricName("point", "", "badchars"));
+    this.outOfRangePointTimes = Metrics.newCounter(new TaggedMetricName("point", "badtime", this.internalTags));
+    this.illegalCharacterPoints = Metrics.newCounter(new TaggedMetricName("point", "badchars", this.internalTags));
 
     this.sendDataTasks = sendDataTasks;
   }
